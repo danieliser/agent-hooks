@@ -3,14 +3,17 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Event-driven extensibility for Claude Code plugins — fire named events, registered listeners respond",
   "main": "dist/index.js",
   "bin": {
     "agent-hooks": "dist/cli.js"
   },
   "files": [
+    ".claude-plugin",
     "dist",
+    "hooks",
+    "scripts",
     "examples",
     "docs",
     "README.md",

@@ -1,10 +1,24 @@
 {
   "name": "agent-hooks",
-  "version": "1.0.0",
-  "description": "Event-driven extensibility for Claude Code — named hooks for LLM agent workflows. Provides emit and has_listeners MCP tools that dispatch events to registered listeners (shell scripts, template files, MCP tool instructions).",
+  "version": "1.2.1",
+  "description": "Event-driven extensibility for Claude Code — fire named events, registered listeners respond with shell scripts, templates, or MCP tool calls. Supports conditional listeners (when:), listener chaining (pipelines), CLI debugging, and namespaced debug logging.",
   "author": {
-    "name": "Daniel Iser"
+    "name": "Daniel Iser",
+    "email": "daniel@code-atlantic.com",
+    "url": "https://github.com/danieliser"
   },
+  "homepage": "https://github.com/danieliser/agent-hooks",
+  "repository": "https://github.com/danieliser/agent-hooks",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "mcp",
+    "events",
+    "hooks",
+    "plugins",
+    "extensibility",
+    "agent"
+  ],
   "mcpServers": {
     "agent-hooks": {
       "command": "node",
