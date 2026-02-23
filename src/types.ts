@@ -8,6 +8,7 @@ export interface ListenerConfig {
   description?: string;
   timeout?: number;
   env?: Record<string, string>;
+  when?: string; // optional jq expression for conditional execution
   // Shell-specific
   command?: string;
   // Template-specific

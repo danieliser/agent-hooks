@@ -1,4 +1,5 @@
 import type { AgentHooksConfig, HasListenersResponse } from "../types.js";
+import { findListeners } from "../events/dispatcher.js";
 
 const tool = {
   name: "has_listeners",
@@ -25,7 +26,7 @@ const tool = {
       throw new Error("'event' is required and must be a string");
     }
 
-    const listeners = findMatchingListeners(event, config);
+    const listeners = await findListeners(event, undefined, config);
 
     return {
       event,
@@ -35,27 +36,5 @@ const tool = {
     };
   },
 };
-
-function findMatchingListeners(
-  event: string,
-  config: AgentHooksConfig
-): Array<{ priority: number }> {
-  if (!config.events) return [];
-
-  const matches: Array<{ priority: number }> = [];
-
-  for (const [pattern, listeners] of Object.entries(config.events)) {
-    if (pattern === event) {
-      matches.push(...listeners);
-    } else if (pattern.endsWith(".*")) {
-      const prefix = pattern.slice(0, -2);
-      if (event.startsWith(prefix + ".")) {
-        matches.push(...listeners);
-      }
-    }
-  }
-
-  return matches;
-}
 
 export default tool;
