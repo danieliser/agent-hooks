@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { AgentHooksConfig, ListenerConfig } from "../types.js";
+import type { AgentHooksConfig, ListenerConfig, EventEntry, ChainConfig } from "../types.js";
+import { isChainConfig } from "../types.js";
 import { PRIORITY_DEFAULT } from "./schema.js";
 import { debugConfig } from "../utils/debug.js";
 
@@ -40,22 +41,38 @@ function autoGenerateName(listener: Partial<ListenerConfig>): string {
   return "unknown";
 }
 
-function mergeListeners(
-  globalListeners: ListenerConfig[],
-  projectListeners: ListenerConfig[]
-): ListenerConfig[] {
-  // Name-based dedup: build map from global, overlay project
-  const byName = new Map<string, ListenerConfig>();
+function getEntryName(entry: EventEntry): string {
+  if (isChainConfig(entry)) {
+    // Use first chain member's name as key, or generate one
+    const first = entry.chain[0];
+    return first ? `chain:${first.name || autoGenerateName(first)}` : "chain:unknown";
+  }
+  return entry.name || autoGenerateName(entry);
+}
 
-  for (const listener of globalListeners) {
-    const name = listener.name || autoGenerateName(listener);
-    byName.set(name, { ...listener, name });
+function mergeListeners(
+  globalListeners: EventEntry[],
+  projectListeners: EventEntry[]
+): EventEntry[] {
+  // Name-based dedup: build map from global, overlay project
+  const byName = new Map<string, EventEntry>();
+
+  for (const entry of globalListeners) {
+    const name = getEntryName(entry);
+    if (isChainConfig(entry)) {
+      byName.set(name, { ...entry, priority: entry.priority ?? PRIORITY_DEFAULT });
+    } else {
+      byName.set(name, { ...entry, name, priority: entry.priority ?? PRIORITY_DEFAULT });
+    }
   }
 
-  for (const listener of projectListeners) {
-    const name = listener.name || autoGenerateName(listener);
-    // Project overwrites global if same name
-    byName.set(name, { ...listener, name });
+  for (const entry of projectListeners) {
+    const name = getEntryName(entry);
+    if (isChainConfig(entry)) {
+      byName.set(name, { ...entry, priority: entry.priority ?? PRIORITY_DEFAULT });
+    } else {
+      byName.set(name, { ...entry, name, priority: entry.priority ?? PRIORITY_DEFAULT });
+    }
   }
 
   // Sort by priority ascending (lower = runs first)
@@ -125,17 +142,31 @@ export function loadAndMergeConfig(
   return merged;
 }
 
-function normalizeConfig(config: AgentHooksConfig): AgentHooksConfig {
-  // Ensure all listeners have names and normalize priorities
-  const events: Record<string, ListenerConfig[]> = {};
-
-  for (const [eventName, listeners] of Object.entries(config.events ?? {})) {
-    events[eventName] = (listeners ?? [])
-      .map((l) => ({
+function normalizeEntry(entry: EventEntry): EventEntry {
+  if (isChainConfig(entry)) {
+    return {
+      ...entry,
+      priority: entry.priority ?? PRIORITY_DEFAULT,
+      chain: entry.chain.map((l) => ({
         ...l,
         name: l.name || autoGenerateName(l),
         priority: l.priority ?? PRIORITY_DEFAULT,
-      }))
+      })),
+    };
+  }
+  return {
+    ...entry,
+    name: entry.name || autoGenerateName(entry),
+    priority: entry.priority ?? PRIORITY_DEFAULT,
+  };
+}
+
+function normalizeConfig(config: AgentHooksConfig): AgentHooksConfig {
+  const events: Record<string, EventEntry[]> = {};
+
+  for (const [eventName, entries] of Object.entries(config.events ?? {})) {
+    events[eventName] = (entries ?? [])
+      .map(normalizeEntry)
       .sort((a, b) => a.priority - b.priority);
   }
 
