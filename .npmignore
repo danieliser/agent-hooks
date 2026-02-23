@@ -1,0 +1,11 @@
+src/
+tests/
+.claude-plugin/
+hooks/
+scripts/
+vitest.config.ts
+tsconfig.json
+.github/
+.gitignore
+coverage/
+*.tgz

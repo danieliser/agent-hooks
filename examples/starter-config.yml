@@ -1,0 +1,68 @@
+# agent-hooks configuration
+# Full reference: https://github.com/danieliser/agent-hooks/blob/main/docs/CONFIGURATION.md
+#
+# Place this file at:
+#   .claude/agent-hooks.yml        (project-specific)
+#   ~/.claude/agent-hooks.yml      (global — applies to all projects)
+#
+# Both are optional. If both exist, they deep-merge:
+#   - Same listener name → project overrides global
+#   - Different names → both fire
+#   - After merge, listeners sort by priority (ascending)
+
+version: "1.0"
+enabled: true
+# default_timeout: 5000          # Default timeout (ms) for all listeners
+
+# Global env vars available to all shell listeners
+# global_env:
+#   PROJECT_NAME: "my-project"
+#   SLACK_WEBHOOK: "https://hooks.slack.com/..."
+
+events:
+  # ── Shell listener ─────────────────────────────────────────────
+  # Runs a command. JSON payload on stdin, JSON response on stdout.
+  #
+  # my_plugin.task.completed:
+  #   - name: log-completions
+  #     type: shell
+  #     command: ./scripts/log-event.sh
+  #     priority: 10
+  #     timeout: 3000
+  #     env:
+  #       LOG_FILE: /tmp/agent-events.log
+
+  # ── Template listener ──────────────────────────────────────────
+  # Injects markdown into agent context. Supports ${data.X} and ${env.Y}.
+  #
+  # session.lifecycle.start:
+  #   - name: project-context
+  #     type: template
+  #     path: .claude/templates/project-context.md
+  #     priority: 5
+
+  # ── MCP listener ───────────────────────────────────────────────
+  # Returns tool call instructions for the agent to execute.
+  #
+  # strategize.spec.drafted:
+  #   - name: create-adr
+  #     type: mcp
+  #     server: my-server
+  #     tool: create_record
+  #     priority: 10
+  #     args_mapping:
+  #       title: "${data.spec_name}"
+
+  # ── Wildcard listener ──────────────────────────────────────────
+  # Matches any event under a namespace.
+  #
+  # strategize.*:
+  #   - name: strategize-logger
+  #     type: shell
+  #     command: ./scripts/log-event.sh
+  #     priority: 100
+
+# Error handling
+errors:
+  isolate_failures: true          # One failure doesn't block others
+  include_in_response: true       # Include error details in emit() response

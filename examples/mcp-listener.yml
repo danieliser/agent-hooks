@@ -1,0 +1,29 @@
+# Example MCP listener configuration
+#
+# MCP listeners don't execute tool calls directly — they return instructions
+# for the calling agent to execute. The response includes an `mcp_calls` array
+# with server, tool, and args for each call.
+#
+# Status is always "pending_execution" — the agent decides whether to execute.
+
+events:
+  strategize.spec.drafted:
+    - name: create-adr
+      type: mcp
+      server: my-mcp-server        # MCP server name from your config
+      tool: create_record           # Tool name on that server
+      priority: 10
+      description: "Create an architecture decision record when a spec is drafted"
+      args_mapping:
+        title: "${data.spec_name} Decision Record"
+        context: "${data.spec_path}"
+        status: "proposed"
+
+    - name: notify-team
+      type: mcp
+      server: slack-mcp
+      tool: send_message
+      priority: 20
+      args_mapping:
+        channel: "#architecture"
+        text: "New spec drafted: ${data.spec_name}"

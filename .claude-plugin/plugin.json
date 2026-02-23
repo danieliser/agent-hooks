@@ -1,0 +1,14 @@
+{
+  "name": "agent-hooks",
+  "version": "1.0.0",
+  "description": "Event-driven extensibility plugin for Claude Code — WordPress-style hooks for LLM agent workflows. Provides emit and has_listeners MCP tools that dispatch named events to registered listeners (shell scripts, template files, MCP tool instructions).",
+  "author": {
+    "name": "Daniel Iser"
+  },
+  "mcpServers": {
+    "agent-hooks": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
+    }
+  }
+}
