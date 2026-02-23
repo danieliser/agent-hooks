@@ -12,6 +12,7 @@ import { executeShellListener } from "../listeners/shell-listener.js";
 import { executeTemplateListener } from "../listeners/template-listener.js";
 import { executeMcpListener } from "../listeners/mcp-listener.js";
 import { logEmit } from "../utils/logger.js";
+import { debugDispatcher } from "../utils/debug.js";
 
 export async function dispatch(
   event: string,
@@ -22,6 +23,7 @@ export async function dispatch(
   const startTime = Date.now();
   const invocationId = `evt-${uuidv4().slice(0, 12)}`;
   const effectiveTimeout = timeout ?? config.default_timeout ?? DEFAULT_TIMEOUT_MS;
+  debugDispatcher("emit event=%s invocation_id=%s", event, invocationId);
 
   // Enforce 10KB payload limit
   if (data !== undefined) {
@@ -35,6 +37,7 @@ export async function dispatch(
 
   // Find matching listeners
   const listeners = findListeners(event, config);
+  debugDispatcher("found %d matching listeners", listeners.length);
 
   if (listeners.length === 0) {
     const response: EmitResponse = {
@@ -70,6 +73,7 @@ export async function dispatch(
     );
 
     try {
+      debugDispatcher("executing listener priority=%d name=%s type=%s", listener.priority, listener.name, listener.type);
       const result = await executeListener(
         listener,
         event,
@@ -78,6 +82,7 @@ export async function dispatch(
         listenerTimeout,
         config
       );
+      debugDispatcher("listener result status=%s duration=%dms", result.status, result.duration_ms);
       responses.push(result);
 
       if (result.status === "error" || result.status === "timeout") {
@@ -118,6 +123,7 @@ export async function dispatch(
     timed_out: timedOut,
   };
 
+  debugDispatcher("dispatch complete listeners=%d errors=%d duration=%dms", responses.length, errors.length, response.duration_ms);
   logEmit(response);
   return response;
 }
@@ -141,6 +147,7 @@ export function dispatchAsync(
   }
 
   const listeners = findListeners(event, config);
+  debugDispatcher("async emit event=%s listeners=%d", event, listeners.length);
 
   // Fire and forget — run dispatch in background, don't await
   if (listeners.length > 0) {
@@ -159,7 +166,7 @@ export function dispatchAsync(
   };
 }
 
-function findListeners(
+export function findListeners(
   event: string,
   config: AgentHooksConfig
 ): ListenerConfig[] {
@@ -177,7 +184,7 @@ function findListeners(
   return listeners.sort((a, b) => a.priority - b.priority);
 }
 
-function matchesEvent(pattern: string, event: string): boolean {
+export function matchesEvent(pattern: string, event: string): boolean {
   // Exact match
   if (pattern === event) return true;
 

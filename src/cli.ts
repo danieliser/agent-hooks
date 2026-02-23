@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadAndMergeConfig } from "./config/loader.js";
 import { validateConfig } from "./config/validator.js";
+import { testEmit, formatTestOutput } from "./commands/test.js";
 
 const STARTER_CONFIG = `# agent-hooks configuration
 # Docs: https://github.com/danieliser/agent-hooks/blob/main/docs/CONFIGURATION.md
@@ -65,7 +66,11 @@ function printUsage(): void {
 Usage:
   agent-hooks init       Scaffold .claude/agent-hooks.yml and example listener
   agent-hooks validate   Validate config files and report errors
+  agent-hooks test       Dry-run event simulation (no execution)
   agent-hooks help       Show this help message
+
+Flags:
+  --data '{}'            Event data for test command (JSON)
 
 When run without arguments, starts the MCP server (stdio transport).
 
@@ -162,6 +167,29 @@ switch (command) {
   case "--validate":
     runValidate();
     break;
+  case "test": {
+    const eventName = process.argv[3];
+    if (!eventName) {
+      process.stderr.write("Usage: agent-hooks test <event> [--data '{}']\n");
+      process.exit(1);
+    }
+    const config = loadAndMergeConfig();
+    const args = process.argv.slice(4);
+    const dataIdx = args.indexOf("--data");
+    let data: Record<string, unknown> = {};
+    if (dataIdx !== -1 && args[dataIdx + 1]) {
+      try {
+        data = JSON.parse(args[dataIdx + 1]);
+      } catch {
+        process.stderr.write("Invalid JSON in --data\n");
+        process.exit(1);
+      }
+    }
+    const result = testEmit(eventName, data, config);
+    process.stdout.write(formatTestOutput(result) + "\n");
+    process.exit(result.success ? 0 : 1);
+    break;
+  }
   case "help":
   case "--help":
   case "-h":
