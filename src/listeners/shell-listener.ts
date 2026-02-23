@@ -6,6 +6,7 @@ import type {
   ListenerResponse,
   ShellPayload,
 } from "../types.js";
+import { debugShellListener } from "../utils/debug.js";
 
 function resolveHome(p: string): string {
   if (p.startsWith("~/") || p === "~") {
@@ -42,6 +43,7 @@ export async function executeShellListener(
   }
 
   const command = resolveHome(listener.command);
+  debugShellListener("executing command=%s timeout=%dms", command, timeout);
   const payload: ShellPayload = {
     event,
     invocation_id: invocationId,
@@ -76,6 +78,7 @@ export async function executeShellListener(
 
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
+      debugShellListener("command stdout length=%d", stdout.length);
     });
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
@@ -178,6 +181,7 @@ export async function executeShellListener(
 
     child.on("error", (err) => {
       clearTimeout(timer);
+      debugShellListener("command error: %s", err.message);
       resolve({
         listener_id: listener.name,
         name: listener.name,

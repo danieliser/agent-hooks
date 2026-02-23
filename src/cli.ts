@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadAndMergeConfig } from "./config/loader.js";
 import { validateConfig } from "./config/validator.js";
+import { listEvents, formatAsTable, formatAsJson } from "./commands/list.js";
 import { testEmit, formatTestOutput } from "./commands/test.js";
 
 const STARTER_CONFIG = `# agent-hooks configuration
@@ -66,11 +67,17 @@ function printUsage(): void {
 Usage:
   agent-hooks init       Scaffold .claude/agent-hooks.yml and example listener
   agent-hooks validate   Validate config files and report errors
+  agent-hooks list       List registered events and listener counts
   agent-hooks test       Dry-run event simulation (no execution)
   agent-hooks help       Show this help message
 
-Flags:
-  --data '{}'            Event data for test command (JSON)
+Flags (list):
+  --json                 Output as JSON
+  --event <pattern>      Filter by event name or wildcard
+
+Flags (test):
+  --data '{}'            Event payload as JSON
+  --when                 Show conditional listener matching
 
 When run without arguments, starts the MCP server (stdio transport).
 
@@ -167,6 +174,18 @@ switch (command) {
   case "--validate":
     runValidate();
     break;
+  case "list": {
+    const config = loadAndMergeConfig();
+    const listArgs = process.argv.slice(3);
+    const jsonFlag = listArgs.includes("--json");
+    const eventIdx = listArgs.indexOf("--event");
+    const pattern = eventIdx !== -1 ? listArgs[eventIdx + 1] : undefined;
+    const entries = listEvents(config, pattern);
+    process.stdout.write(
+      (jsonFlag ? formatAsJson(entries) : formatAsTable(entries)) + "\n"
+    );
+    break;
+  }
   case "test": {
     const eventName = process.argv[3];
     if (!eventName) {
@@ -185,9 +204,14 @@ switch (command) {
         process.exit(1);
       }
     }
-    const result = testEmit(eventName, data, config);
-    process.stdout.write(formatTestOutput(result) + "\n");
-    process.exit(result.success ? 0 : 1);
+    const showConditions = args.includes("--when");
+    testEmit(eventName, data, config, showConditions).then((result) => {
+      process.stdout.write(formatTestOutput(result) + "\n");
+      process.exit(result.success ? 0 : 1);
+    }).catch((err) => {
+      process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
     break;
   }
   case "help":

@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Event-driven extensibility for Claude Code plugins — fire named events, registered listeners respond",
   "main": "dist/index.js",
   "bin": {
@@ -51,10 +51,12 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "yaml": "^2.7.0",
-    "uuid": "^10.0.0"
+    "debug": "^4.4.3",
+    "uuid": "^10.0.0",
+    "yaml": "^2.7.0"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
     "typescript": "^5.7.0",

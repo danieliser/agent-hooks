@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ListenerConfig, ListenerResponse } from "../types.js";
 import { MAX_TEMPLATE_SIZE_BYTES } from "../config/schema.js";
+import { debugTemplateListener } from "../utils/debug.js";
 
 function resolveHome(p: string): string {
   if (p.startsWith("~/") || p === "~") {
@@ -35,6 +36,7 @@ export async function executeTemplateListener(
   }
 
   const templatePath = resolveHome(listener.path);
+  debugTemplateListener("reading template path=%s", listener.path);
 
   if (!fs.existsSync(templatePath)) {
     return {
@@ -82,6 +84,7 @@ export async function executeTemplateListener(
   });
 
   const wordCount = content.split(/\s+/).filter(Boolean).length;
+  debugTemplateListener("template rendered length=%d", content.length);
 
   return {
     listener_id: listener.name,

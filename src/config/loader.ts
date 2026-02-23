@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { AgentHooksConfig, ListenerConfig } from "../types.js";
 import { PRIORITY_DEFAULT } from "./schema.js";
+import { debugConfig } from "../utils/debug.js";
 
 const GLOBAL_CONFIG_PATH = path.join(
   process.env.HOME ?? "~",
@@ -71,7 +72,9 @@ export function loadAndMergeConfig(
   const pPath = projectPath ?? PROJECT_CONFIG_PATH;
 
   const globalConfig = loadYamlFile(gPath);
+  if (globalConfig) debugConfig("loaded config from %s", gPath);
   const projectConfig = loadYamlFile(pPath);
+  if (projectConfig) debugConfig("loaded config from %s", pPath);
 
   // No config at all — return empty but valid
   if (!globalConfig && !projectConfig) {
@@ -116,6 +119,9 @@ export function loadAndMergeConfig(
     merged.events[eventName] = mergeListeners(globalListeners, projectListeners);
   }
 
+  const eventCount = Object.keys(merged.events).length;
+  const listenerCount = Object.values(merged.events).reduce((sum, l) => sum + l.length, 0);
+  debugConfig("merged config: %d events, %d total listeners", eventCount, listenerCount);
   return merged;
 }
 

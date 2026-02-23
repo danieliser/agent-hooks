@@ -169,7 +169,7 @@ describe("Event dispatcher", () => {
     );
   });
 
-  it("async mode returns immediately with enqueued status", () => {
+  it("async mode returns immediately with enqueued status", async () => {
     const script = path.join(tmpDir, "async-slow.sh");
     fs.writeFileSync(script, '#!/bin/bash\nsleep 2\necho \'{"done": true}\'');
     fs.chmodSync(script, 0o755);
@@ -181,7 +181,7 @@ describe("Event dispatcher", () => {
     });
 
     const startTime = Date.now();
-    const result = dispatchAsync("test.event", { key: "val" }, 10000, config);
+    const result = await dispatchAsync("test.event", { key: "val" }, 10000, config);
     const elapsed = Date.now() - startTime;
 
     // Should return immediately (well under the 2s sleep)
@@ -192,17 +192,146 @@ describe("Event dispatcher", () => {
     expect(result.invocation_id).toMatch(/^evt-/);
   });
 
-  it("async mode with no listeners returns zero registered", () => {
+  it("async mode with no listeners returns zero registered", async () => {
     const config = makeConfig({});
-    const result = dispatchAsync("no.listeners", undefined, 5000, config);
+    const result = await dispatchAsync("no.listeners", undefined, 5000, config);
     expect(result.listeners_registered).toBe(0);
     expect(result.status).toBe("enqueued");
   });
 
-  it("async mode enforces 10KB payload limit", () => {
+  it("async mode enforces 10KB payload limit", async () => {
     const config = makeConfig({ "test.event": [] });
-    expect(() =>
+    await expect(() =>
       dispatchAsync("test.event", { big: "x".repeat(11 * 1024) }, 5000, config)
-    ).toThrow("10KB limit");
+    ).rejects.toThrow("10KB limit");
+  });
+
+  it("conditional listener with matching condition — executes", async () => {
+    const script = path.join(tmpDir, "conditional.sh");
+    fs.writeFileSync(script, '#!/bin/bash\necho \'{"executed": true}\'');
+    fs.chmodSync(script, 0o755);
+
+    const config = makeConfig({
+      "test.event": [
+        {
+          name: "conditional-match",
+          type: "shell",
+          command: script,
+          priority: 10,
+          when: '.category == "security"',
+        },
+      ],
+    });
+
+    const result = await dispatch("test.event", { category: "security" }, 5000, config);
+    expect(result.responses).toHaveLength(1);
+    expect(result.responses[0].name).toBe("conditional-match");
+    expect(result.responses[0].status).toBe("success");
+  });
+
+  it("conditional listener with non-matching condition — skipped", async () => {
+    const script = path.join(tmpDir, "conditional2.sh");
+    fs.writeFileSync(script, '#!/bin/bash\necho \'{"executed": true}\'');
+    fs.chmodSync(script, 0o755);
+
+    const config = makeConfig({
+      "test.event": [
+        {
+          name: "conditional-skip",
+          type: "shell",
+          command: script,
+          priority: 10,
+          when: '.category == "security"',
+        },
+      ],
+    });
+
+    const result = await dispatch("test.event", { category: "logging" }, 5000, config);
+    // Listener is skipped, so no responses
+    expect(result.responses).toHaveLength(0);
+    expect(result.listeners_executed).toBe(0);
+  });
+
+  it("mix of conditional and unconditional listeners — correct subset executes", async () => {
+    const unconditionalScript = path.join(tmpDir, "unconditional.sh");
+    const conditionalScript = path.join(tmpDir, "conditional3.sh");
+
+    fs.writeFileSync(unconditionalScript, '#!/bin/bash\necho \'{"type": "unconditional"}\'');
+    fs.writeFileSync(conditionalScript, '#!/bin/bash\necho \'{"type": "conditional"}\'');
+    fs.chmodSync(unconditionalScript, 0o755);
+    fs.chmodSync(conditionalScript, 0o755);
+
+    const config = makeConfig({
+      "test.event": [
+        {
+          name: "unconditional",
+          type: "shell",
+          command: unconditionalScript,
+          priority: 5,
+        },
+        {
+          name: "conditional-match",
+          type: "shell",
+          command: conditionalScript,
+          priority: 10,
+          when: '.priority > 5',
+        },
+      ],
+    });
+
+    const result = await dispatch("test.event", { priority: 10 }, 5000, config);
+    expect(result.responses).toHaveLength(2);
+    expect(result.responses[0].name).toBe("unconditional");
+    expect(result.responses[1].name).toBe("conditional-match");
+  });
+
+  it("conditional listener with invalid when expression — graceful degradation executes anyway", async () => {
+    const script = path.join(tmpDir, "invalid-cond.sh");
+    fs.writeFileSync(script, '#!/bin/bash\necho \'{"executed": true}\'');
+    fs.chmodSync(script, 0o755);
+
+    const config = makeConfig({
+      "test.event": [
+        {
+          name: "bad-condition",
+          type: "shell",
+          command: script,
+          priority: 10,
+          when: "invalid jq syntax [[[",
+        },
+      ],
+    });
+
+    const result = await dispatch("test.event", { data: "test" }, 5000, config);
+    // Even with invalid condition, listener executes (graceful degradation)
+    expect(result.responses).toHaveLength(1);
+    expect(result.responses[0].name).toBe("bad-condition");
+    expect(result.responses[0].status).toBe("success");
+  });
+
+  it("async dispatch respects conditional matching", async () => {
+    const script = path.join(tmpDir, "async-conditional.sh");
+    fs.writeFileSync(script, '#!/bin/bash\necho \'{"async": true}\'');
+    fs.chmodSync(script, 0o755);
+
+    const config = makeConfig({
+      "test.event": [
+        {
+          name: "async-cond",
+          type: "shell",
+          command: script,
+          priority: 10,
+          when: '.enabled == true',
+        },
+      ],
+    });
+
+    // Condition matches
+    const result1 = await dispatchAsync("test.event", { enabled: true }, 10000, config);
+    expect(result1.listeners_registered).toBe(1);
+
+    // Condition doesn't match
+    const result2 = await dispatchAsync("test.event", { enabled: false }, 10000, config);
+    expect(result2.listeners_registered).toBe(0);
   });
 });

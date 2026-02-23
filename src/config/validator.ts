@@ -133,6 +133,14 @@ export function validateConfig(
         });
       }
 
+      // Validate when expression
+      if (listener.when !== undefined && typeof listener.when !== "string") {
+        errors.push({
+          file: projectFile,
+          message: `${ctx}: 'when' must be a string, got '${typeof listener.when}'`,
+        });
+      }
+
       // Shell-specific: global config paths must be absolute or ~
       if (listener.type === "shell" && listener.command) {
         validateShellPath(listener, ctx, globalFile, projectFile, errors);

@@ -13,6 +13,7 @@ import { executeTemplateListener } from "../listeners/template-listener.js";
 import { executeMcpListener } from "../listeners/mcp-listener.js";
 import { logEmit } from "../utils/logger.js";
 import { debugDispatcher } from "../utils/debug.js";
+import { evaluateCondition } from "../utils/conditions.js";
 
 export async function dispatch(
   event: string,
@@ -36,7 +37,7 @@ export async function dispatch(
   }
 
   // Find matching listeners
-  const listeners = findListeners(event, config);
+  const listeners = await findListeners(event, data, config);
   debugDispatcher("found %d matching listeners", listeners.length);
 
   if (listeners.length === 0) {
@@ -128,12 +129,12 @@ export async function dispatch(
   return response;
 }
 
-export function dispatchAsync(
+export async function dispatchAsync(
   event: string,
   data: Record<string, unknown> | undefined,
   timeout: number | undefined,
   config: AgentHooksConfig
-): EmitAsyncResponse {
+): Promise<EmitAsyncResponse> {
   const invocationId = `evt-${uuidv4().slice(0, 12)}`;
 
   // Enforce 10KB payload limit
@@ -146,7 +147,7 @@ export function dispatchAsync(
     }
   }
 
-  const listeners = findListeners(event, config);
+  const listeners = await findListeners(event, data, config);
   debugDispatcher("async emit event=%s listeners=%d", event, listeners.length);
 
   // Fire and forget — run dispatch in background, don't await
@@ -166,7 +167,42 @@ export function dispatchAsync(
   };
 }
 
-export function findListeners(
+export async function findListeners(
+  event: string,
+  data: Record<string, unknown> | undefined,
+  config: AgentHooksConfig
+): Promise<ListenerConfig[]> {
+  if (!config.events) return [];
+
+  const listeners: ListenerConfig[] = [];
+
+  for (const [pattern, eventListeners] of Object.entries(config.events)) {
+    if (matchesEvent(pattern, event)) {
+      for (const listener of eventListeners) {
+        if (!listener.when) {
+          listeners.push(listener); // No condition, always execute
+        } else {
+          const matched = await evaluateCondition(listener.when, data ?? {});
+          if (matched) {
+            listeners.push(listener);
+          } else {
+            debugDispatcher("listener %s skipped by condition: %s", listener.name, listener.when);
+          }
+        }
+      }
+    }
+  }
+
+  // Sort by priority (already sorted per-event, but after merging wildcards we need to re-sort)
+  return listeners.sort((a, b) => a.priority - b.priority);
+}
+
+/**
+ * Returns ALL listeners matching an event pattern, ignoring `when` conditions.
+ * Used by the test command to show which listeners would match and display
+ * condition evaluation results (matched/skipped) for debugging.
+ */
+export function findAllListenersForEvent(
   event: string,
   config: AgentHooksConfig
 ): ListenerConfig[] {
@@ -180,7 +216,6 @@ export function findListeners(
     }
   }
 
-  // Sort by priority (already sorted per-event, but after merging wildcards we need to re-sort)
   return listeners.sort((a, b) => a.priority - b.priority);
 }
 

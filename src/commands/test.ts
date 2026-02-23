@@ -1,6 +1,7 @@
 import type { AgentHooksConfig, ListenerConfig, ListenerType } from "../types.js";
-import { findListeners } from "../events/dispatcher.js";
+import { findListeners, findAllListenersForEvent } from "../events/dispatcher.js";
 import { MAX_PAYLOAD_SIZE_BYTES } from "../config/schema.js";
+import { evaluateCondition } from "../utils/conditions.js";
 
 export interface TestResult {
   event: string;
@@ -14,6 +15,8 @@ export interface TestListenerResult {
   name: string;
   type: ListenerType;
   priority: number;
+  conditionalMatched?: boolean; // true/false if `when:` present, undefined if absent
+  when?: string; // the raw when expression, if present
   // Type-specific details
   command?: string; // shell
   path?: string; // template
@@ -26,12 +29,17 @@ export interface TestListenerResult {
   errors: string[];
 }
 
-export function testEmit(
+export async function testEmit(
   event: string,
   data: Record<string, unknown>,
-  config: AgentHooksConfig
-): TestResult {
-  const listeners = findListeners(event, config);
+  config: AgentHooksConfig,
+  showConditions: boolean = false
+): Promise<TestResult> {
+  // When showing conditions, get ALL listeners (unfiltered) so we can display
+  // which ones matched vs skipped. Otherwise use the filtered set.
+  const listeners = showConditions
+    ? findAllListenersForEvent(event, config)
+    : await findListeners(event, data, config);
   const payloadSize = Buffer.byteLength(JSON.stringify(data), "utf-8");
   const results: TestListenerResult[] = [];
   const errors: string[] = [];
@@ -68,15 +76,24 @@ export function testEmit(
         const args: Record<string, unknown> = {};
         for (const [key, template] of Object.entries(listener.args_mapping)) {
           // Replace ${data.X} with actual values
-          args[key] = template.replace(/\$\{data\.(\w+)\}/g, (_, field) => {
-            const val = data[field];
-            return val !== undefined ? String(val) : `<missing: data.${field}>`;
+          args[key] = template.replace(/\$\{data\.([^}]+)\}/g, (_, fieldPath) => {
+            // Support dotted paths like ${data.meta.author}
+            const val = fieldPath.split(".").reduce((obj: any, key: string) => obj?.[key], data);
+            return val !== undefined ? String(val) : `<missing: data.${fieldPath}>`;
           });
         }
         result.args = args;
       }
       if (!listener.server) result.errors.push("Missing server field");
       if (!listener.tool) result.errors.push("Missing tool field");
+    }
+
+    // Conditional listener handling
+    if (showConditions && listener.when) {
+      result.when = listener.when;
+      // Evaluate the condition
+      const matched = await evaluateCondition(listener.when, data);
+      result.conditionalMatched = matched;
     }
 
     results.push(result);
@@ -120,6 +137,15 @@ export function formatTestOutput(result: TestResult): string {
         lines.push(`    tool: ${listener.tool || "(missing)"}`);
         if (listener.args) {
           lines.push(`    args: ${JSON.stringify(listener.args)}`);
+        }
+      }
+
+      if (listener.when) {
+        lines.push(`    when: ${listener.when}`);
+        if (listener.conditionalMatched === true) {
+          lines.push(`    \u2713 condition met`);
+        } else if (listener.conditionalMatched === false) {
+          lines.push(`    \u2717 condition not met \u2014 listener skipped`);
         }
       }
 

@@ -23,73 +23,73 @@ describe("testEmit", () => {
     enabled: true,
   };
 
-  it("matches correct listeners for an event", () => {
-    const result = testEmit("agent.workflow.step_completed", {}, baseConfig);
+  it("matches correct listeners for an event", async () => {
+    const result = await testEmit("agent.workflow.step_completed", {}, baseConfig);
     expect(result.listener_count).toBe(2);
     expect(result.listeners).toHaveLength(2);
     expect(result.listeners[0].name).toBe("notify");
     expect(result.listeners[1].name).toBe("log");
   });
 
-  it("returns empty listeners for unknown event", () => {
-    const result = testEmit("nonexistent.event", {}, baseConfig);
+  it("returns empty listeners for unknown event", async () => {
+    const result = await testEmit("nonexistent.event", {}, baseConfig);
     expect(result.listener_count).toBe(0);
     expect(result.listeners).toHaveLength(0);
     expect(result.success).toBe(true);
   });
 
-  it("shell listener shows command and payload size", () => {
-    const result = testEmit("agent.workflow.step_completed", {}, baseConfig);
+  it("shell listener shows command and payload size", async () => {
+    const result = await testEmit("agent.workflow.step_completed", {}, baseConfig);
     const shellListener = result.listeners.find((l) => l.type === "shell");
     expect(shellListener).toBeDefined();
     expect(shellListener?.command).toBe("notify.sh");
     expect(shellListener?.payloadSize).toBe(2); // "{}" is 2 bytes
   });
 
-  it("template listener shows path", () => {
-    const result = testEmit("agent.workflow.step_completed", {}, baseConfig);
+  it("template listener shows path", async () => {
+    const result = await testEmit("agent.workflow.step_completed", {}, baseConfig);
     const templateListener = result.listeners.find((l) => l.type === "template");
     expect(templateListener).toBeDefined();
     expect(templateListener?.path).toBe("log.md");
   });
 
-  it("mcp listener shows server and tool", () => {
-    const result = testEmit("strategize.spec.drafted", {}, baseConfig);
+  it("mcp listener shows server and tool", async () => {
+    const result = await testEmit("strategize.spec.drafted", {}, baseConfig);
     const mcpListener = result.listeners.find((l) => l.type === "mcp");
     expect(mcpListener).toBeDefined();
     expect(mcpListener?.server).toBe("server-a");
     expect(mcpListener?.tool).toBe("tool-a");
   });
 
-  it("mcp args substitution replaces ${data.X} with values", () => {
-    const result = testEmit("strategize.spec.drafted", { spec_name: "my-spec" }, baseConfig);
+  it("mcp args substitution replaces ${data.X} with values", async () => {
+    const result = await testEmit("strategize.spec.drafted", { spec_name: "my-spec" }, baseConfig);
     const mcpListener = result.listeners.find((l) => l.type === "mcp");
     expect(mcpListener?.args).toBeDefined();
     expect(mcpListener?.args?.title).toBe("my-spec");
   });
 
-  it("mcp args substitution marks missing fields", () => {
-    const result = testEmit("strategize.spec.drafted", {}, baseConfig);
+  it("mcp args substitution marks missing fields", async () => {
+    const result = await testEmit("strategize.spec.drafted", {}, baseConfig);
     const mcpListener = result.listeners.find((l) => l.type === "mcp");
     expect(mcpListener?.args?.title).toBe("<missing: data.spec_name>");
   });
 
-  it("payload size error when over 10KB", () => {
+  it("payload size error when over 10KB", async () => {
     const largeData: Record<string, unknown> = {
       bigfield: "x".repeat(11 * 1024), // 11KB string
     };
-    const result = testEmit("agent.workflow.step_completed", largeData, baseConfig);
+    const result = await testEmit("agent.workflow.step_completed", largeData, baseConfig);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]).toContain("Payload exceeds");
     expect(result.errors[0]).toContain("KB limit");
   });
 
-  it("success is true when no errors", () => {
-    const result = testEmit("agent.workflow.step_completed", {}, baseConfig);
+  it("success is true when no errors", async () => {
+    const result = await testEmit("agent.workflow.step_completed", {}, baseConfig);
     expect(result.success).toBe(true);
   });
 
-  it("success is false when listener has errors", () => {
+  it("success is false when listener has errors", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -103,21 +103,21 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.success).toBe(false);
     expect(result.listeners[0].errors).toContain("Missing command field");
   });
 
-  it("success is false when payload exceeds limit", () => {
+  it("success is false when payload exceeds limit", async () => {
     const largeData: Record<string, unknown> = {
       bigfield: "x".repeat(11 * 1024),
     };
-    const result = testEmit("agent.workflow.step_completed", largeData, baseConfig);
+    const result = await testEmit("agent.workflow.step_completed", largeData, baseConfig);
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it("detects missing server field in mcp listener", () => {
+  it("detects missing server field in mcp listener", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -132,11 +132,11 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.listeners[0].errors).toContain("Missing server field");
   });
 
-  it("detects missing tool field in mcp listener", () => {
+  it("detects missing tool field in mcp listener", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -151,11 +151,11 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.listeners[0].errors).toContain("Missing tool field");
   });
 
-  it("detects missing path field in template listener", () => {
+  it("detects missing path field in template listener", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -169,11 +169,11 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.listeners[0].errors).toContain("Missing path field");
   });
 
-  it("includes timeout if specified", () => {
+  it("includes timeout if specified", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -188,11 +188,11 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.listeners[0].timeout).toBe(3000);
   });
 
-  it("priority ordering matches listener order", () => {
+  it("priority ordering matches listener order", async () => {
     const config: AgentHooksConfig = {
       events: {
         "test.event": [
@@ -203,7 +203,7 @@ describe("testEmit", () => {
       },
       enabled: true,
     };
-    const result = testEmit("test.event", {}, config);
+    const result = await testEmit("test.event", {}, config);
     expect(result.listeners[0].name).toBe("low");
     expect(result.listeners[0].priority).toBe(5);
     expect(result.listeners[1].name).toBe("mid");

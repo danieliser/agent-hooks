@@ -1,4 +1,5 @@
 import type { ListenerConfig, ListenerResponse, McpCall } from "../types.js";
+import { debugMcpListener } from "../utils/debug.js";
 
 /**
  * MCP listeners don't execute tool calls — they return instruction arrays.
@@ -29,6 +30,8 @@ export async function executeMcpListener(
     };
   }
 
+  debugMcpListener("mcp server=%s tool=%s", listener.server, listener.tool);
+
   // Build args from args_mapping with substitution
   const args: Record<string, unknown> = {};
   if (listener.args_mapping) {
@@ -36,6 +39,7 @@ export async function executeMcpListener(
       args[key] = substituteTemplate(template, data);
     }
   }
+  debugMcpListener("mapped args=%O", args);
 
   const mcpCall: McpCall = {
     server: listener.server,
