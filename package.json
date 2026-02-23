@@ -1,5 +1,8 @@
 {
-  "name": "agent-hooks",
+  "name": "@danieliser/agent-hooks",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "1.0.0",
   "description": "WordPress-style event system for Claude Code plugins — fire named events, registered listeners respond",
   "main": "dist/index.js",

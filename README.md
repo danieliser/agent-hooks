@@ -1,9 +1,9 @@
 # agent-hooks
 
-[![npm version](https://img.shields.io/npm/v/agent-hooks)](https://www.npmjs.com/package/agent-hooks)
+[![npm version](https://img.shields.io/npm/v/@danieliser/agent-hooks)](https://www.npmjs.com/package/@danieliser/agent-hooks)
 [![CI](https://github.com/danieliser/agent-hooks/actions/workflows/test.yml/badge.svg)](https://github.com/danieliser/agent-hooks/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node](https://img.shields.io/node/v/agent-hooks)](https://nodejs.org)
+[![Node](https://img.shields.io/node/v/@danieliser/agent-hooks)](https://nodejs.org)
 
 WordPress-style event system for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
 
@@ -20,7 +20,7 @@ WordPress-style event system for Claude Code plugins. Fire named events, registe
 
 ```bash
 # From npm
-npm install agent-hooks
+npm install @danieliser/agent-hooks
 
 # Or add to your Claude Code plugin marketplace
 ```
