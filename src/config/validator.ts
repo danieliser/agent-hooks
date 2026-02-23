@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Document, parseDocument } from "yaml";
-import type { AgentHooksConfig, ListenerConfig, ValidationError } from "../types.js";
+import type { AgentHooksConfig, ListenerConfig, EventEntry, ValidationError } from "../types.js";
+import { isChainConfig } from "../types.js";
 import {
   VALID_LISTENER_TYPES,
   MAX_TEMPLATE_SIZE_BYTES,
@@ -10,6 +11,8 @@ import {
   WILDCARD_EVENT_PATTERN,
   PRIORITY_MIN,
   PRIORITY_MAX,
+  MAX_CHAIN_LENGTH,
+  CHAIN_ALLOWED_TYPES,
 } from "./schema.js";
 
 function resolveHome(p: string): string {
@@ -88,7 +91,15 @@ export function validateConfig(
     }
 
     for (let i = 0; i < listeners.length; i++) {
-      const listener = listeners[i];
+      const entry = listeners[i];
+
+      if (isChainConfig(entry)) {
+        const chainCtx = `event '${eventName}', chain #${i}`;
+        validateChainEntry(entry, chainCtx, eventName, projectFile, globalFile, namesSeen, errors);
+        continue;
+      }
+
+      const listener = entry;
       const ctx = `event '${eventName}', listener '${listener.name ?? `#${i}`}'`;
 
       // Validate listener type
@@ -182,6 +193,86 @@ export function validateConfig(
   }
 
   return errors;
+}
+
+function validateChainEntry(
+  entry: import("../types.js").ChainConfig,
+  ctx: string,
+  eventName: string,
+  projectFile: string,
+  globalFile: string,
+  namesSeen: Map<string, string>,
+  errors: ValidationError[]
+): void {
+  if (!Array.isArray(entry.chain) || entry.chain.length === 0) {
+    errors.push({ file: projectFile, message: `${ctx}: chain must be a non-empty array` });
+    return;
+  }
+
+  if (entry.chain.length > MAX_CHAIN_LENGTH) {
+    errors.push({ file: projectFile, message: `${ctx}: chain exceeds maximum length of ${MAX_CHAIN_LENGTH} (has ${entry.chain.length})` });
+  }
+
+  // Validate chain-level priority
+  if (entry.priority !== undefined) {
+    if (typeof entry.priority !== "number" || entry.priority < PRIORITY_MIN || entry.priority > PRIORITY_MAX) {
+      errors.push({ file: projectFile, message: `${ctx}: priority must be between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
+    }
+  }
+
+  // Validate chain-level when
+  if (entry.when !== undefined && typeof entry.when !== "string") {
+    errors.push({ file: projectFile, message: `${ctx}: 'when' must be a string` });
+  }
+
+  // Validate each chain member
+  for (let j = 0; j < entry.chain.length; j++) {
+    const member = entry.chain[j];
+    const memberCtx = `${ctx}, member '${member.name ?? `#${j}`}'`;
+
+    if (!member.type || !VALID_LISTENER_TYPES.includes(member.type)) {
+      errors.push({ file: projectFile, message: `${memberCtx}: invalid type '${member.type}'` });
+      continue;
+    }
+
+    // MCP not allowed in chains
+    if (!CHAIN_ALLOWED_TYPES.includes(member.type)) {
+      errors.push({ file: projectFile, message: `${memberCtx}: type '${member.type}' is not allowed in chains (only ${CHAIN_ALLOWED_TYPES.join(", ")})` });
+      continue;
+    }
+
+    // Validate required fields
+    const required = REQUIRED_FIELDS_BY_TYPE[member.type];
+    for (const field of required) {
+      if (!(member as unknown as Record<string, unknown>)[field]) {
+        errors.push({ file: projectFile, message: `${memberCtx}: missing required field '${field}'` });
+      }
+    }
+
+    // Chain members cannot have their own when:
+    if (member.when !== undefined) {
+      errors.push({ file: projectFile, message: `${memberCtx}: 'when' is not allowed on chain members (use 'when' on the chain itself)` });
+    }
+
+    // Shell path validation
+    if (member.type === "shell" && member.command) {
+      validateShellPath(member, memberCtx, globalFile, projectFile, errors);
+    }
+
+    // Template path validation
+    if (member.type === "template" && member.path) {
+      validateTemplatePath(member, memberCtx, projectFile, errors);
+    }
+
+    // Duplicate name detection
+    if (member.name) {
+      const key = `${eventName}:${member.name}`;
+      if (namesSeen.has(key)) {
+        errors.push({ file: projectFile, message: `${memberCtx}: duplicate listener name '${member.name}'` });
+      }
+      namesSeen.set(key, eventName);
+    }
+  }
 }
 
 function validateShellPath(

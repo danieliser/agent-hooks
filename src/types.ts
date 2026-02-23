@@ -19,10 +19,24 @@ export interface ListenerConfig {
   args_mapping?: Record<string, string>;
 }
 
+export interface ChainConfig {
+  chain: ListenerConfig[];
+  priority: number;
+  when?: string;
+  timeout?: number;
+  description?: string;
+}
+
+export type EventEntry = ListenerConfig | ChainConfig;
+
+export function isChainConfig(entry: EventEntry): entry is ChainConfig {
+  return "chain" in entry && Array.isArray((entry as ChainConfig).chain);
+}
+
 export interface AgentHooksConfig {
   version?: string;
   default_timeout?: number;
-  events: Record<string, ListenerConfig[]>;
+  events: Record<string, EventEntry[]>;
   errors?: {
     isolate_failures?: boolean;
     include_in_response?: boolean;

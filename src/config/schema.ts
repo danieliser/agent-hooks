@@ -21,3 +21,7 @@ export const REQUIRED_FIELDS_BY_TYPE: Record<ListenerType, string[]> = {
   template: ["path"],
   mcp: ["server", "tool"],
 };
+
+// Chain constraints
+export const MAX_CHAIN_LENGTH = 10;
+export const CHAIN_ALLOWED_TYPES: ListenerType[] = ["shell", "template"];

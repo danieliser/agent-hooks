@@ -1,4 +1,5 @@
-import type { AgentHooksConfig, ListenerType } from "../types.js";
+import type { AgentHooksConfig, ListenerType, EventEntry } from "../types.js";
+import { isChainConfig } from "../types.js";
 
 export interface ListEventEntry {
   event: string;
@@ -7,9 +8,22 @@ export interface ListEventEntry {
   enabled: boolean;
   listeners?: {
     name: string;
-    type: ListenerType;
+    type: ListenerType | "chain";
     priority: number;
+    chain_members?: number;
   }[];
+}
+
+function countListeners(entries: EventEntry[]): number {
+  let count = 0;
+  for (const entry of entries) {
+    if (isChainConfig(entry)) {
+      count += entry.chain.length;
+    } else {
+      count++;
+    }
+  }
+  return count;
 }
 
 export function listEvents(
@@ -18,42 +32,42 @@ export function listEvents(
 ): ListEventEntry[] {
   const entries: ListEventEntry[] = [];
 
-  // Get all event names from config
   const eventNames = Object.keys(config.events ?? {});
 
-  // Filter by pattern if provided
   let filteredNames = eventNames;
   if (pattern) {
     if (pattern.endsWith(".*")) {
-      // Wildcard pattern: agent.workflow.* matches agent.workflow.step_completed
-      const prefix = pattern.slice(0, -2); // Remove .* suffix
+      const prefix = pattern.slice(0, -2);
       filteredNames = eventNames.filter((name) => name.startsWith(prefix + "."));
     } else {
-      // Exact match
       filteredNames = eventNames.filter((name) => name === pattern);
     }
   }
 
-  // Build entries for each matching event
   for (const eventName of filteredNames) {
-    const listeners = config.events[eventName] ?? [];
+    const eventEntries = config.events[eventName] ?? [];
     const minPriority =
-      listeners.length > 0 ? Math.min(...listeners.map((l) => l.priority)) : null;
+      eventEntries.length > 0 ? Math.min(...eventEntries.map((e) => e.priority)) : null;
 
     entries.push({
       event: eventName,
-      listener_count: listeners.length,
+      listener_count: countListeners(eventEntries),
       min_priority: minPriority,
       enabled: config.enabled ?? true,
-      listeners: listeners.map((l) => ({
-        name: l.name,
-        type: l.type,
-        priority: l.priority,
-      })),
+      listeners: eventEntries.map((e) => {
+        if (isChainConfig(e)) {
+          return {
+            name: e.chain[0]?.name ?? "chain",
+            type: "chain" as const,
+            priority: e.priority,
+            chain_members: e.chain.length,
+          };
+        }
+        return { name: e.name, type: e.type, priority: e.priority };
+      }),
     });
   }
 
-  // Sort by event name alphabetically
   entries.sort((a, b) => a.event.localeCompare(b.event));
 
   return entries;
