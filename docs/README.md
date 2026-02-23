@@ -1,6 +1,6 @@
 # agent-hooks
 
-WordPress-style event system for Claude Code plugins. Fire named events, registered listeners respond.
+Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond.
 
 ## Quick Start
 

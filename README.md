@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/node/v/@danieliser/agent-hooks)](https://nodejs.org)
 
-WordPress-style event system for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
+Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
 
 ## Why agent-hooks?
 

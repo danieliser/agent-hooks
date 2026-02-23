@@ -4,7 +4,7 @@
     "access": "public"
   },
   "version": "1.0.0",
-  "description": "WordPress-style event system for Claude Code plugins — fire named events, registered listeners respond",
+  "description": "Event-driven extensibility for Claude Code plugins — fire named events, registered listeners respond",
   "main": "dist/index.js",
   "bin": {
     "agent-hooks": "dist/cli.js"
