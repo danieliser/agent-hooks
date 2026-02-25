@@ -84,7 +84,8 @@ export async function executeShellListener(
       stderr += chunk.toString();
     });
 
-    // Write payload to stdin
+    // Write payload to stdin — ignore EPIPE if child exits before read
+    child.stdin.on("error", () => {});
     child.stdin.write(JSON.stringify(payload));
     child.stdin.end();
 
