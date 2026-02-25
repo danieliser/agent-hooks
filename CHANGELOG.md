@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-02-25
+
+### Added
+
+- PreCompact hook — touches a marker file before context compaction so SessionStart can detect post-compaction re-injection
+- Post-compaction detection in SessionStart — emits `session.lifecycle.compact` instead of `session.lifecycle.start` when a recent PreCompact marker is found (5-minute window)
+- Marker self-cleans on read, no session-end cleanup needed
+
 ## [1.0.0] - 2026-02-22
 
 ### Added
