@@ -29,6 +29,7 @@ fi
 GIT_BRANCH=""
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || true
 
+
 # Estimate duration from session file timestamps if available
 DURATION=0
 if [[ -f "$SESSION_FILE" ]]; then
