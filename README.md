@@ -13,8 +13,6 @@ Here's agent-hooks in action, injecting KB update tasks based on project context
 
 ![Prompt Injection Protection Example](screenshots/prompt-injection.png)
 
-The system detects and blocks malicious instructions embedded in user input, demonstrating how event-driven hooks can add security layers without modifying core agent logic.
-
 ## Why agent-hooks?
 
 - **Decoupling** — Plugins don't need to know about each other. Emit events; whoever's listening handles the rest.
