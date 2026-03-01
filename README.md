@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/node/v/@danieliser/agent-hooks)](https://nodejs.org)
 
-Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
+Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions (experimental).
 
 ## Example: Hook Based Prompt Injection
 
@@ -98,7 +98,7 @@ Agent → emit("domain.entity.action", data)
          ↓
        Config lookup → matched listeners (sorted by priority)
          ↓
-       Execute each: shell | template | mcp
+       Execute each: shell | template | mcp instructions
          ↓
        Return merged results to agent
 ```
@@ -112,7 +112,7 @@ Agent → emit("domain.entity.action", data)
 
 ### `emit`
 
-Fire a named event. Returns listener results and any MCP call instructions.
+Fire a named event. Returns listener results and any MCP call instructions (experimental).
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -196,7 +196,7 @@ See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full schema reference
   priority: 5
 ```
 
-**MCP** — Returns tool call instructions for the agent to execute.
+**MCP (experimental)** — Returns tool call instructions for the agent to execute.
 
 ```yaml
 - name: create-adr
