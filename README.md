@@ -7,6 +7,14 @@
 
 Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
 
+## Example: Prompt Injection Protection
+
+Here's agent-hooks in action, protecting against prompt injection attempts:
+
+![Prompt Injection Protection Example](screenshots/prompt-injection.png)
+
+The system detects and blocks malicious instructions embedded in user input, demonstrating how event-driven hooks can add security layers without modifying core agent logic.
+
 ## Why agent-hooks?
 
 - **Decoupling** — Plugins don't need to know about each other. Emit events; whoever's listening handles the rest.
