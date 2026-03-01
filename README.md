@@ -7,7 +7,7 @@
 
 Event-driven extensibility for Claude Code plugins. Fire named events, registered listeners respond with shell output, template content, or MCP tool call instructions.
 
-## Example: Prompt Injection Protection
+## Example: Hook Based Prompt Injection
 
 Here's agent-hooks in action, injecting KB update tasks based on project context.
 
