@@ -9,7 +9,7 @@ Event-driven extensibility for Claude Code plugins. Fire named events, registere
 
 ## Example: Prompt Injection Protection
 
-Here's agent-hooks in action, protecting against prompt injection attempts:
+Here's agent-hooks in action, injecting KB update tasks based on project context.
 
 ![Prompt Injection Protection Example](screenshots/prompt-injection.png)
 
